@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Med Fluency | Operação de mídia</title>
+    <meta name="description" content="Meta Ads, agendamentos, atendimentos e faturamento em uma única visão." />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MED FLUENCY · PERFORMANCE</p>
+          <h1>Operação de mídia</h1>
+          <p class="subhead">Meta Ads, agendamentos, atendimentos e faturamento por campanha/localidade.</p>
+        </div>
+        <div class="controls" aria-label="Filtros">
+          <label>Mês <input id="month" type="month" /></label>
+          <label>Buscar <input id="search" type="search" placeholder="Campanha, sigla ou localidade" /></label>
+          <button id="refresh" type="button">Atualizar dados</button>
+        </div>
+      </header>
+
+      <section id="notice" class="notice loading">Carregando dados das fontes...</section>
+      <section id="cards" class="cards" aria-live="polite"></section>
+      <section class="panel">
+        <div class="panel-header">
+          <div><p class="eyebrow">VISÃO POR CAMPANHA / LOCALIDADE</p><h2>Funil consolidado</h2></div>
+          <p id="row-count" class="muted"></p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Campanha / localidade</th><th>Status</th><th>Investimento</th><th>Leads Meta</th><th>Agend.</th><th>Atend.</th><th>Vendas</th><th>Faturamento</th><th>ROAS</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+      <footer id="updated" class="muted"></footer>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
