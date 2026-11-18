@@ -1,0 +1,12 @@
+{
+  "name": "med-fluency-performance-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --check api/dashboard.js && node --check public/app.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
