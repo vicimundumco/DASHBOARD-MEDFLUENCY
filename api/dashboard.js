@@ -126,7 +126,7 @@ async function metaCampaigns(month) {
       return {
         id: campaign.id, accountId, name: campaign.name, status: campaign.effective_status || campaign.status,
         active: campaign.effective_status === "ACTIVE", spend: asNumber(insight.spend),
-        impressions: asNumber(insight.impressions), reach: asNumber(insight.reach), clicks: asNumber(insight.inline_link_clicks || insight.clicks), leads,
+        impressions: asNumber(insight.impressions), reach: asNumber(insight.reach), linkClicks: asNumber(insight.inline_link_clicks || insight.clicks), leads,
         ...campaignIdentity(campaign.name)
       };
     });
@@ -190,16 +190,19 @@ function mergeData(meta, sales, appointments) {
   return [...data.values()].map((entry) => {
     const metrics = entry.meta.reduce((total, campaign) => ({
       spend: total.spend + campaign.spend, impressions: total.impressions + campaign.impressions, reach: total.reach + campaign.reach,
-      clicks: total.clicks + campaign.clicks, leads: total.leads + campaign.leads
-    }), { spend: 0, impressions: 0, reach: 0, clicks: 0, leads: 0 });
+      linkClicks: total.linkClicks + campaign.linkClicks, leads: total.leads + campaign.leads
+    }), { spend: 0, impressions: 0, reach: 0, linkClicks: 0, leads: 0 });
     const revenue = entry.sales.reduce((total, sale) => total + sale.value, 0);
     return {
       key: entry.key, family: entry.family, location: entry.location,
       campaignNames: [...new Set(entry.meta.map((campaign) => campaign.name))], accounts: [...new Set(entry.meta.map((campaign) => campaign.accountId))],
       active: entry.meta.some((campaign) => campaign.active), ...metrics, sales: entry.sales.length, revenue,
       appointments: entry.appointments.length, attendances: entry.attendances.length,
-      cpl: metrics.leads ? metrics.spend / metrics.leads : null, cpa: entry.appointments.length ? metrics.spend / entry.appointments.length : null,
-      roas: metrics.spend ? revenue / metrics.spend : null
+      cpl: metrics.leads ? metrics.spend / metrics.leads : null, cpc: metrics.linkClicks ? metrics.spend / metrics.linkClicks : null,
+      ctr: metrics.impressions ? (metrics.linkClicks / metrics.impressions) * 100 : null, cpm: metrics.impressions ? (metrics.spend / metrics.impressions) * 1000 : null,
+      leadRate: metrics.linkClicks ? (metrics.leads / metrics.linkClicks) * 100 : null,
+      cpa: entry.appointments.length ? metrics.spend / entry.appointments.length : null,
+      leadToAttendanceRate: metrics.leads ? (entry.attendances.length / metrics.leads) * 100 : null, roas: metrics.spend ? revenue / metrics.spend : null
     };
   }).sort((a, b) => b.spend - a.spend || b.revenue - a.revenue);
 }
@@ -207,14 +210,43 @@ function mergeData(meta, sales, appointments) {
 function totals(rows) {
   return rows.reduce((result, row) => ({
     spend: result.spend + row.spend, leads: result.leads + row.leads, sales: result.sales + row.sales, revenue: result.revenue + row.revenue,
+    linkClicks: result.linkClicks + (row.linkClicks || 0), impressions: result.impressions + (row.impressions || 0),
     appointments: result.appointments + row.appointments, attendances: result.attendances + row.attendances
-  }), { spend: 0, leads: 0, sales: 0, revenue: 0, appointments: 0, attendances: 0 });
+  }), { spend: 0, leads: 0, sales: 0, revenue: 0, linkClicks: 0, impressions: 0, appointments: 0, attendances: 0 });
+}
+
+function snapshotDashboard(month) {
+  if (process.env.DASHBOARD_MODE !== "snapshot") return null;
+  if (!process.env.DASHBOARD_SNAPSHOT) throw new Error("DASHBOARD_SNAPSHOT não configurada na Vercel.");
+  let snapshot;
+  try { snapshot = JSON.parse(process.env.DASHBOARD_SNAPSHOT); } catch { throw new Error("DASHBOARD_SNAPSHOT não é um JSON válido."); }
+  if (snapshot.month !== month) throw new Error(`O snapshot disponível é para ${snapshot.month}.`);
+  return { ...snapshot, mode: "snapshot", generatedAt: snapshot.snapshotAt || new Date().toISOString() };
+}
+
+function demoDashboard(month) {
+  const rows = [
+    { family: "MEDICOS", location: "CURITIBA", active: true, spend: 2400, leads: 142, appointments: 19, attendances: 10, sales: 3, revenue: 8400, campaignNames: ["MÉDICOS CURITIBA · DEMO"], accounts: ["CA01"], impressions: 58500, reach: 28600, linkClicks: 510 },
+    { family: "MEDICOS", location: "VITORIA", active: true, spend: 1980, leads: 107, appointments: 14, attendances: 7, sales: 2, revenue: 5600, campaignNames: ["MÉDICOS VITÓRIA · DEMO"], accounts: ["CA01"], impressions: 46100, reach: 21500, linkClicks: 420 },
+    { family: "SAUDE", location: "SALVADOR", active: true, spend: 3150, leads: 226, appointments: 31, attendances: 16, sales: 5, revenue: 13750, campaignNames: ["SAÚDE SALVADOR · DEMO"], accounts: ["CA01"], impressions: 98000, reach: 59200, linkClicks: 980 },
+    { family: "MEDICOS", location: "CAPITAIS", active: true, spend: 1750, leads: 86, appointments: 12, attendances: 6, sales: 2, revenue: 4900, campaignNames: ["MÉDICOS CAPITAIS · DEMO"], accounts: ["CA02"], impressions: 40700, reach: 24400, linkClicks: 365 },
+    { family: "SAUDE", location: "VILA VELHA", active: true, spend: 860, leads: 63, appointments: 9, attendances: 4, sales: 1, revenue: 2450, campaignNames: ["SAÚDE VILA VELHA · DEMO"], accounts: ["CA01"], impressions: 25400, reach: 14100, linkClicks: 210 }
+  ].map((row) => ({
+    ...row, key: `${row.family}|${row.location}`, cpl: row.spend / row.leads, cpc: row.spend / row.linkClicks,
+    ctr: (row.linkClicks / row.impressions) * 100, cpm: (row.spend / row.impressions) * 1000, leadRate: (row.leads / row.linkClicks) * 100,
+    cpa: row.spend / row.appointments, leadToAttendanceRate: (row.attendances / row.leads) * 100, roas: row.revenue ? row.revenue / row.spend : 0
+  }));
+  return { month, mode: "demo", generatedAt: new Date().toISOString(), totals: totals(rows), rows,
+    sources: { metaAccounts: ["CA01", "CA02"], salesSheet: "Demonstração", appointmentSheet: "Demonstração" } };
 }
 
 export default async function handler(request, response) {
   if (request.method !== "GET") return response.status(405).json({ error: "Método não permitido." });
   const month = String(request.query.month || new Date().toISOString().slice(0, 7));
   try {
+    const snapshot = snapshotDashboard(month);
+    if (snapshot) return response.status(200).json(snapshot);
+    if (process.env.DASHBOARD_MODE === "demo") return response.status(200).json(demoDashboard(month));
     const [meta, sales, appointments] = await Promise.all([metaCampaigns(month), salesRows(month), appointmentRows(month)]);
     const rows = mergeData(meta, sales, appointments);
     return response.status(200).json({ month, generatedAt: new Date().toISOString(), totals: totals(rows), rows,
