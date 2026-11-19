@@ -27,3 +27,5 @@ npm test
 ```
 
 Para publicar: crie um repositório GitHub, envie esta pasta e importe o repositório na Vercel. A cada push na branch principal, a Vercel fará o deploy automaticamente.
+
+> A instância de validação pode usar um snapshot protegido no ambiente da Vercel; os dados operacionais não ficam no repositório.
