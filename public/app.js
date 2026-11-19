@@ -5,6 +5,7 @@ const search = document.querySelector("#search");
 const refresh = document.querySelector("#refresh");
 const notice = document.querySelector("#notice");
 const cards = document.querySelector("#cards");
+const dailyRows = document.querySelector("#daily-rows");
 const tableRows = document.querySelector("#rows");
 const rowCount = document.querySelector("#row-count");
 const updated = document.querySelector("#updated");
@@ -31,6 +32,11 @@ function renderRows() {
   tableRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · ") || "Sem campanha Meta no período")}</span></div></td><td><span class="badge ${row.active ? "active" : "paused"}">${row.active ? "Ativa" : "Rodou no mês"}</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("") : `<tr><td colspan="16">Nenhum resultado para esta busca.</td></tr>`;
 }
 
+function renderDaily() {
+  const rows = dashboard.daily || [];
+  dailyRows.innerHTML = rows.length ? rows.map((row) => `<tr><td>${new Date(`${row.date}T12:00:00`).toLocaleDateString("pt-BR")}</td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("") : `<tr><td colspan="15">Ainda não há dados diários para este mês.</td></tr>`;
+}
+
 async function load() {
   notice.className = "notice loading";
   notice.textContent = "Atualizando Meta Ads e planilhas...";
@@ -40,6 +46,7 @@ async function load() {
     dashboard = await response.json();
     if (!response.ok) throw new Error(dashboard.error || "Não foi possível carregar os dados.");
     renderCards(dashboard.totals);
+    renderDaily();
     renderRows();
     notice.className = "notice";
     notice.textContent = dashboard.mode === "demo"
@@ -49,7 +56,7 @@ async function load() {
         : `Dados consolidados para ${month.value}. CA01 e CA02 estão incluídas.`;
     updated.textContent = `Última atualização: ${new Date(dashboard.generatedAt).toLocaleString("pt-BR")}.`;
   } catch (error) {
-    cards.innerHTML = ""; tableRows.innerHTML = "";
+    cards.innerHTML = ""; dailyRows.innerHTML = ""; tableRows.innerHTML = "";
     notice.className = "notice error";
     notice.textContent = `${error.message} Configure as variáveis da Vercel conforme o README e atualize novamente.`;
     updated.textContent = "";
