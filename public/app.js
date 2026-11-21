@@ -57,10 +57,12 @@ const decimal = (value, digits = 2) => value === null || value === undefined ? "
 const percent = (value) => value === null || value === undefined ? "—" : `${decimal(value)}%`;
 const escape = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[char]);
 
+const ratioPercent = (numerator, denominator) => denominator ? (numerator / denominator) * 100 : null;
+
 function renderCards(totals) {
   const roas = totals.spend ? totals.revenue / totals.spend : null;
-  const leadToAttendance = totals.leads ? (totals.attendances / totals.leads) * 100 : null;
-  const cardData = [["Investimento", amount(totals.spend), "Meta Ads"], ["Leads Meta", count(totals.leads), totals.leads ? `CPL ${amount(totals.spend / totals.leads)}` : "Sem leads"], ["Agendamentos", count(totals.appointments), "Leads únicos"], ["Atendimentos", count(totals.attendances), `Lead/atend. ${percent(leadToAttendance)}`], ["Vendas", count(totals.sales), "Base comercial"], ["Faturamento", amount(totals.revenue), roas === null ? "ROAS —" : `ROAS ${roas.toFixed(2)}x`]];
+  const leadToAttendance = ratioPercent(totals.attendances, totals.leads);
+  const cardData = [["Investimento", amount(totals.spend), "Meta Ads"], ["Leads Meta", count(totals.leads), totals.leads ? `CPL ${amount(totals.spend / totals.leads)}` : "Sem leads"], ["Agendamentos", count(totals.appointments), "Leads únicos"], ["Atendimentos", count(totals.attendances), `Atendimentos/Leads ${percent(leadToAttendance)}`], ["Vendas", count(totals.sales), "Base comercial"], ["Faturamento", amount(totals.revenue), roas === null ? "ROAS —" : `ROAS ${roas.toFixed(2)}x`]];
   cards.innerHTML = cardData.map(([label, value, detail]) => `<article class="card"><p>${label}</p><strong>${value}</strong><small>${detail}</small></article>`).join("");
 }
 
@@ -81,7 +83,7 @@ function renderRows() {
     });
   }
   rowCount.textContent = `${rows.length} resultado${rows.length === 1 ? "" : "s"}`;
-  tableRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · ") || "Sem campanha Meta no período")}</span></div></td><td><span class="badge ${row.active ? "active" : "paused"}">${row.active ? "Ativa" : "Rodou no mês"}</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("") : `<tr><td colspan="16">Nenhum resultado para esta busca.</td></tr>`;
+  tableRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · ") || "Sem campanha Meta no período")}</span></div></td><td><span class="badge ${row.active ? "active" : "paused"}">${row.active ? "Ativa" : "Rodou no mês"}</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${percent(row.leadShare)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("") : `<tr><td colspan="17">Nenhum resultado para esta busca.</td></tr>`;
 }
 
 async function load() {
@@ -96,8 +98,15 @@ async function load() {
     const response = await fetch(`/api/dashboard?month=${month}`, { signal: request.signal });
     const data = await response.json();
     if (request !== currentRequest) return;
-    dashboard = data;
-    if (!response.ok) throw new Error(dashboard.error || "Não foi possível carregar os dados.");
+    if (!response.ok) throw new Error(data.error || "Não foi possível carregar os dados.");
+    dashboard = {
+      ...data,
+      rows: data.rows.map((row) => ({
+        ...row,
+        leadToAttendanceRate: ratioPercent(row.attendances, row.leads),
+        leadShare: ratioPercent(row.leads, data.totals.leads)
+      }))
+    };
     renderCards(dashboard.totals);
     renderRows();
     notice.className = "notice";
