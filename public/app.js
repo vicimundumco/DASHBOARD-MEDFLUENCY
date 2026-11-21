@@ -17,6 +17,8 @@ const cards = document.querySelector("#cards");
 const sortField = document.querySelector("#sort-field");
 const sortDirection = document.querySelector("#sort-direction");
 let descending = true;
+const exportCsv = document.querySelector("#export-csv");
+const funnelTable = document.querySelector("#funnel-table");
 const tableRows = document.querySelector("#rows");
 const rowCount = document.querySelector("#row-count");
 const updated = document.querySelector("#updated");
@@ -82,9 +84,35 @@ function renderRows() {
       return descending ? -comparison : comparison;
     });
   }
+  exportCsv.disabled = refresh.disabled || rows.length === 0;
   rowCount.textContent = `${rows.length} resultado${rows.length === 1 ? "" : "s"}`;
   tableRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · ") || "Sem campanha Meta no período")}</span></div></td><td><span class="badge ${row.active ? "active" : "paused"}">${row.active ? "Ativa" : "Rodou no mês"}</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${percent(row.leadShare)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("") : `<tr><td colspan="17">Nenhum resultado para esta busca.</td></tr>`;
 }
+
+function csvCell(text) {
+  // Spreadsheet applications may interpret campaign names as formulas.
+  const value = /^[\s\uFEFF]*[=+@-]/.test(text) && !/^-\d+(?:[,.]\d+)*%?$/.test(text)
+    ? "'" + text
+    : text;
+  return '"' + value.replaceAll('"', '""') + '"';
+}
+
+exportCsv.addEventListener("click", () => {
+  if (exportCsv.disabled) return;
+
+  const lines = Array.from(funnelTable.rows, (row) =>
+    Array.from(row.cells, (cell) => csvCell(cell.innerText.trim())).join(";")
+  );
+  const file = new Blob(["\uFEFF", lines.join("\r\n"), "\r\n"], {
+    type: "text/csv;charset=utf-8"
+  });
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `med-fluency-funil-${selectedMonth}.csv`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
 
 async function load() {
   currentRequest?.abort();
@@ -94,6 +122,7 @@ async function load() {
   notice.className = "notice loading";
   notice.textContent = "Atualizando Meta Ads e planilhas...";
   refresh.disabled = true;
+  exportCsv.disabled = true;
   try {
     const response = await fetch(`/api/dashboard?month=${month}`, { signal: request.signal });
     const data = await response.json();
@@ -124,7 +153,10 @@ async function load() {
     notice.textContent = `${error.message} Configure as variáveis da Vercel conforme o README e atualize novamente.`;
     updated.textContent = "";
   } finally {
-    if (request === currentRequest) refresh.disabled = false;
+    if (request === currentRequest) {
+      refresh.disabled = false;
+      exportCsv.disabled = !dashboard || tableRows.rows[0]?.cells.length !== funnelTable.tHead.rows[0].cells.length;
+    }
   }
 }
 
