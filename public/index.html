@@ -16,11 +16,25 @@
           <p class="subhead">Meta Ads, agendamentos, atendimentos e faturamento por campanha/localidade.</p>
         </div>
         <div class="controls" aria-label="Filtros">
-          <label>Mês <input id="month" type="month" /></label>
           <label>Buscar <input id="search" type="search" placeholder="Campanha, sigla ou localidade" /></label>
           <button id="refresh" type="button">Atualizar dados</button>
         </div>
       </header>
+
+      <section class="panel timeline" aria-labelledby="timeline-title">
+        <div class="timeline-header">
+          <div>
+            <h2 id="timeline-title">Linha do tempo</h2>
+            <p id="selected-period" class="muted" aria-live="polite"></p>
+          </div>
+          <div class="timeline-years" aria-label="Navegação por ano">
+            <button id="previous-year" type="button">Ano anterior</button>
+            <span id="timeline-year" aria-live="polite"></span>
+            <button id="next-year" type="button">Próximo ano</button>
+          </div>
+        </div>
+        <div id="timeline-months" class="timeline-months" role="group" aria-label="Meses do ano"></div>
+      </section>
 
       <section id="notice" class="notice loading">Carregando dados das fontes...</section>
       <section id="cards" class="cards" aria-live="polite"></section>

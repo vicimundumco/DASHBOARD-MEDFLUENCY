@@ -6,3 +6,17 @@ main { max-width:1440px; padding:40px clamp(18px,4vw,64px) 28px; margin:auto; }.
 .funnel-actions, .funnel-actions .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
 .funnel-actions .controls { width: auto; }
 .funnel-actions .controls button:disabled { opacity: .55; cursor: default; }
+
+.timeline { margin-bottom: 18px; padding: 18px 22px; }
+.timeline-header, .timeline-years { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.timeline-header { justify-content: space-between; margin-bottom: 12px; }
+.timeline-header h2 { margin: 0; font-size: 1.25rem; }
+.timeline-header p { margin: 4px 0 0; text-transform: capitalize; }
+.timeline-years span { font-weight: 750; }
+.timeline button { min-height: 42px; padding: 0 10px; border: 1px solid var(--surface-border); border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; cursor: pointer; }
+.timeline button:hover { background: var(--ground); }
+.timeline button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.timeline button:disabled { opacity: .55; cursor: default; }
+.timeline-months { display: grid; grid-template-columns: repeat(12, minmax(54px, 1fr)); gap: 8px; overflow-x: auto; padding: 4px; }
+.timeline-months button { text-transform: capitalize; }
+.timeline-months button[aria-pressed="true"] { background: var(--brand); color: white; border-color: var(--brand); font-weight: 750; }

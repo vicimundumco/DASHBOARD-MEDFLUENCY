@@ -1,6 +1,15 @@
 const formatCurrency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const formatNumber = new Intl.NumberFormat("pt-BR");
-const month = document.querySelector("#month");
+const timeline = document.querySelector("#timeline-months");
+const timelineYear = document.querySelector("#timeline-year");
+const selectedPeriod = document.querySelector("#selected-period");
+const previousYear = document.querySelector("#previous-year");
+const nextYear = document.querySelector("#next-year");
+const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long" });
+const today = new Date();
+let year = today.getFullYear();
+let selectedMonth = monthKey(year, today.getMonth());
+let currentRequest;
 const search = document.querySelector("#search");
 const refresh = document.querySelector("#refresh");
 const notice = document.querySelector("#notice");
@@ -13,7 +22,35 @@ const rowCount = document.querySelector("#row-count");
 const updated = document.querySelector("#updated");
 let dashboard;
 
-month.value = new Date().toISOString().slice(0, 7);
+function monthKey(year, index) {
+  return `${year}-${String(index + 1).padStart(2, "0")}`;
+}
+
+function renderTimeline() {
+  timelineYear.textContent = year;
+  previousYear.disabled = year <= 1000;
+  nextYear.disabled = year >= 9999;
+  timeline.replaceChildren(...Array.from({ length: 12 }, (_, index) => {
+    const button = document.createElement("button");
+    const label = monthLabel.format(new Date(year, index, 1));
+    const value = monthKey(year, index);
+    button.type = "button";
+    button.value = value;
+    button.textContent = label.slice(0, 3);
+    button.setAttribute("aria-label", `${label} de ${year}`);
+    button.setAttribute("aria-pressed", String(value === selectedMonth));
+    return button;
+  }));
+}
+
+function selectPeriod() {
+  const [year, month] = selectedMonth.split("-").map(Number);
+  selectedPeriod.textContent = `${monthLabel.format(new Date(year, month - 1, 1))} de ${year}`;
+  for (const button of timeline.children) {
+    button.setAttribute("aria-pressed", String(button.value === selectedMonth));
+  }
+}
+
 const amount = (value) => formatCurrency.format(value || 0);
 const count = (value) => formatNumber.format(value || 0);
 const decimal = (value, digits = 2) => value === null || value === undefined ? "—" : Number(value).toLocaleString("pt-BR", { maximumFractionDigits: digits });
@@ -48,12 +85,18 @@ function renderRows() {
 }
 
 async function load() {
+  currentRequest?.abort();
+  const request = new AbortController();
+  currentRequest = request;
+  const month = selectedMonth;
   notice.className = "notice loading";
   notice.textContent = "Atualizando Meta Ads e planilhas...";
   refresh.disabled = true;
   try {
-    const response = await fetch(`/api/dashboard?month=${month.value}`);
-    dashboard = await response.json();
+    const response = await fetch(`/api/dashboard?month=${month}`, { signal: request.signal });
+    const data = await response.json();
+    if (request !== currentRequest) return;
+    dashboard = data;
     if (!response.ok) throw new Error(dashboard.error || "Não foi possível carregar os dados.");
     renderCards(dashboard.totals);
     renderRows();
@@ -62,15 +105,18 @@ async function load() {
       ? "Modo demonstração: métricas simuladas para validar a estrutura."
       : dashboard.mode === "snapshot"
         ? `Snapshot fechado: ${dashboard.scope}. Meta, vendas, agendamentos e atendimentos consolidados.`
-        : `Dados consolidados para ${month.value}. CA01 e CA02 estão incluídas.`;
+        : `Dados consolidados para ${month}. CA01 e CA02 estão incluídas.`;
     updated.textContent = `Última atualização: ${new Date(dashboard.generatedAt).toLocaleString("pt-BR")}.`;
   } catch (error) {
+    if (request !== currentRequest) return;
     dashboard = undefined;
     cards.innerHTML = ""; tableRows.innerHTML = ""; rowCount.textContent = "";
     notice.className = "notice error";
     notice.textContent = `${error.message} Configure as variáveis da Vercel conforme o README e atualize novamente.`;
     updated.textContent = "";
-  } finally { refresh.disabled = false; }
+  } finally {
+    if (request === currentRequest) refresh.disabled = false;
+  }
 }
 
 search.addEventListener("input", () => dashboard && renderRows());
@@ -83,6 +129,22 @@ sortDirection.addEventListener("click", () => {
   sortDirection.textContent = descending ? "Decrescente" : "Crescente";
   if (dashboard) renderRows();
 });
-month.addEventListener("change", load);
+previousYear.addEventListener("click", () => {
+  year -= 1;
+  renderTimeline();
+});
+nextYear.addEventListener("click", () => {
+  year += 1;
+  renderTimeline();
+});
+timeline.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button || button.value === selectedMonth) return;
+  selectedMonth = button.value;
+  selectPeriod();
+  load();
+});
+renderTimeline();
+selectPeriod();
 refresh.addEventListener("click", load);
 load();
