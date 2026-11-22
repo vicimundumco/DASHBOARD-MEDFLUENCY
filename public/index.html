@@ -38,6 +38,31 @@
 
       <section id="notice" class="notice loading">Carregando dados das fontes...</section>
       <section id="cards" class="cards" aria-live="polite"></section>
+      <section class="panel trend" aria-labelledby="trend-title">
+        <div class="panel-header">
+          <h2 id="trend-title">Evolução mensal por campanha</h2>
+          <div class="controls trend-controls">
+            <label>Indicador <select id="trend-metric"></select></label>
+            <label>Período
+              <select id="trend-window">
+                <option value="6">Últimos 6 meses</option>
+                <option value="12">Últimos 12 meses</option>
+              </select>
+            </label>
+            <details class="trend-picker">
+              <summary>Comparar campanhas</summary>
+              <div id="trend-campaigns"></div>
+            </details>
+          </div>
+        </div>
+        <p id="trend-status" class="muted" role="status"></p>
+        <div id="trend-plot" class="trend-plot"></div>
+        <ul id="trend-legend" class="trend-legend"></ul>
+        <details id="trend-values" class="trend-values" hidden>
+          <summary>Ver valores por mês</summary>
+          <div class="table-wrap"><table id="trend-table"></table></div>
+        </details>
+      </section>
       <section class="panel">
         <div class="panel-header">
           <div><p class="eyebrow">VISÃO POR CAMPANHA / LOCALIDADE</p><h2>Funil consolidado</h2></div>

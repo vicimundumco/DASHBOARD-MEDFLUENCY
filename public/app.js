@@ -1,3 +1,5 @@
+import { updateTrend } from "./trend.js";
+
 const formatCurrency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const formatNumber = new Intl.NumberFormat("pt-BR");
 const timeline = document.querySelector("#timeline-months");
@@ -124,7 +126,9 @@ async function load() {
   refresh.disabled = true;
   exportCsv.disabled = true;
   try {
-    const response = await fetch(`/api/dashboard?month=${month}`, { signal: request.signal });
+    const monthlyResponse = fetch(`/api/dashboard?month=${month}`, { signal: request.signal });
+    updateTrend(month, monthlyResponse.then(async (response) => response.ok ? response.clone().json() : null));
+    const response = await monthlyResponse;
     const data = await response.json();
     if (request !== currentRequest) return;
     if (!response.ok) throw new Error(data.error || "Não foi possível carregar os dados.");

@@ -217,9 +217,13 @@ function totals(rows) {
 
 function snapshotDashboard(month) {
   if (process.env.DASHBOARD_MODE !== "snapshot") return null;
-  if (!process.env.DASHBOARD_SNAPSHOT) throw new Error("DASHBOARD_SNAPSHOT não configurada na Vercel.");
+  const monthlySnapshot = /^\d{4}-(0[1-9]|1[0-2])$/.test(month)
+    ? process.env[`DASHBOARD_SNAPSHOT_${month.replace("-", "_")}`]
+    : undefined;
+  const source = monthlySnapshot || process.env.DASHBOARD_SNAPSHOT;
+  if (!source) throw new Error("DASHBOARD_SNAPSHOT não configurada na Vercel.");
   let snapshot;
-  try { snapshot = JSON.parse(process.env.DASHBOARD_SNAPSHOT); } catch { throw new Error("DASHBOARD_SNAPSHOT não é um JSON válido."); }
+  try { snapshot = JSON.parse(source); } catch { throw new Error("DASHBOARD_SNAPSHOT não é um JSON válido."); }
   if (snapshot.month !== month) throw new Error(`O snapshot disponível é para ${snapshot.month}.`);
   return { ...snapshot, mode: "snapshot", generatedAt: snapshot.snapshotAt || new Date().toISOString() };
 }
