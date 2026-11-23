@@ -129,7 +129,8 @@ async function metaCampaigns(month) {
     return (campaignsResult.data || []).map((campaign) => {
       const insight = insightByCampaign.get(campaign.id) || {};
       const actions = insight.actions || [];
-      const leads = actions.filter((item) => /lead/i.test(item.action_type)).reduce((sum, item) => sum + asNumber(item.value), 0);
+      const officialLead = actions.find((item) => item.action_type === "lead");
+      const leads = asNumber(officialLead?.value);
       return {
         id: campaign.id, accountId, name: campaign.name, status: campaign.effective_status || campaign.status,
         active: campaign.effective_status === "ACTIVE", spend: asNumber(insight.spend),
