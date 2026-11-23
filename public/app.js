@@ -83,6 +83,48 @@ const escape = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({ "&
 
 const ratioPercent = (numerator, denominator) => numerator == null || denominator == null || !denominator ? null : (numerator / denominator) * 100;
 
+
+function sumMetric(rows, metric) {
+  const values = rows.map((row) => row[metric]).filter((value) => Number.isFinite(value));
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+}
+
+function totalsForRows(rows) {
+  const totals = {
+    spend: sumMetric(rows, "spend"),
+    leads: sumMetric(rows, "leads"),
+    linkClicks: sumMetric(rows, "linkClicks"),
+    impressions: sumMetric(rows, "impressions"),
+    appointments: sumMetric(rows, "appointments"),
+    attendances: sumMetric(rows, "attendances"),
+    sales: sumMetric(rows, "sales"),
+    revenue: sumMetric(rows, "revenue")
+  };
+  return {
+    ...totals,
+    cpl: totals.leads ? totals.spend / totals.leads : null,
+    cpc: totals.linkClicks ? totals.spend / totals.linkClicks : null,
+    ctr: ratioPercent(totals.linkClicks, totals.impressions),
+    cpm: totals.impressions ? (totals.spend / totals.impressions) * 1000 : null,
+    leadRate: ratioPercent(totals.leads, totals.linkClicks),
+    leadToAttendanceRate: ratioPercent(totals.attendances, totals.leads),
+    roas: totals.spend ? totals.revenue / totals.spend : null
+  };
+}
+
+function totalIdentity(rows, scope) {
+  return `<div class="campaign"><strong>Total ${scope}</strong><span>${count(rows.length)} localidade${rows.length === 1 ? "" : "s"} no filtro atual</span></div>`;
+}
+
+function monthlyTotalRow(rows) {
+  const totals = totalsForRows(rows);
+  return `<tr class="total-row"><td>${totalIdentity(rows, "do período")}</td><td>—</td><td>${amount(totals.spend)}</td><td>${count(totals.leads)}</td><td>${percent(totals.leads == null ? null : 100)}</td><td>${amount(totals.cpl)}</td><td>${count(totals.linkClicks)}</td><td>${amount(totals.cpc)}</td><td>${percent(totals.ctr)}</td><td>${amount(totals.cpm)}</td><td>${percent(totals.leadRate)}</td><td>${count(totals.appointments)}</td><td>${count(totals.attendances)}</td><td>${percent(totals.leadToAttendanceRate)}</td><td>${count(totals.sales)}</td><td>${amount(totals.revenue)}</td><td>${totals.roas == null ? "—" : `${totals.roas.toFixed(2)}x`}</td></tr>`;
+}
+
+function dailyTotalRow(rows) {
+  const totals = totalsForRows(rows);
+  return `<tr class="total-row"><td>${totalIdentity(rows, "do dia")}</td><td>—</td><td>${amount(totals.spend)}</td><td>${count(totals.leads)}</td><td>${amount(totals.cpl)}</td><td>${count(totals.linkClicks)}</td><td>${amount(totals.cpc)}</td><td>${percent(totals.ctr)}</td><td>${amount(totals.cpm)}</td><td>${percent(totals.leadRate)}</td><td>${count(totals.appointments)}</td><td>${count(totals.attendances)}</td><td>${count(totals.sales)}</td><td>${amount(totals.revenue)}</td><td>${totals.roas == null ? "—" : `${totals.roas.toFixed(2)}x`}</td></tr>`;
+}
 function renderCards(totals) {
   const roas = totals.spend ? totals.revenue / totals.spend : null;
   const leadToAttendance = ratioPercent(totals.attendances, totals.leads);
@@ -111,7 +153,7 @@ function renderDailyDetail() {
   dailyDetailPeriod.textContent = date
     ? `${new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR")} · ${rows.length} localidade${rows.length === 1 ? "" : "s"} com entrega`
     : "Selecione um dia no gráfico acima.";
-  dailyDetailRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · "))}</span></div></td><td><span class="badge active">Rodou no dia</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas == null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("")
+  dailyDetailRows.innerHTML = rows.length ? `${rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · "))}</span></div></td><td><span class="badge active">Rodou no dia</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas == null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("")}${dailyTotalRow(rows)}`
     : '<tr><td colspan="15">Nenhuma localidade com entrega para este filtro.</td></tr>';
 }
 
@@ -241,7 +283,7 @@ function renderRows() {
   }
   exportCsv.disabled = refresh.disabled || rows.length === 0;
   rowCount.textContent = `${rows.length} resultado${rows.length === 1 ? "" : "s"}`;
-  tableRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · ") || (dashboard.mode === "historical" ? "" : "Sem campanha Meta no período"))}</span></div></td><td><span class="badge ${row.active ? "active" : "paused"}">${row.active == null ? "—" : row.active ? "Ativa" : "Rodou no mês"}</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${percent(row.leadShare)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("") : `<tr><td colspan="17">Nenhum resultado para esta busca.</td></tr>`;
+  tableRows.innerHTML = rows.length ? `${rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · ") || (dashboard.mode === "historical" ? "" : "Sem campanha Meta no período"))}</span></div></td><td><span class="badge ${row.active ? "active" : "paused"}">${row.active == null ? "—" : row.active ? "Ativa" : "Rodou no mês"}</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${percent(row.leadShare)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("")}${monthlyTotalRow(rows)}` : `<tr><td colspan="17">Nenhum resultado para esta busca.</td></tr>`;
 }
 
 function csvCell(text) {
