@@ -58,3 +58,40 @@ main { max-width:1440px; padding:40px clamp(18px,4vw,64px) 28px; margin:auto; }.
 @media (max-width: 520px) {
   #trend-campaigns { right: auto; left: 0; }
 }
+
+/* Compact dashboard layout */
+main { padding: 18px clamp(12px, 2.5vw, 36px) 16px; }
+.topbar { gap: 12px; padding-bottom: 12px; }
+.topbar h1 { font-size: clamp(1.65rem, 3vw, 2.4rem); }
+.topbar .eyebrow { margin-bottom: 4px; }
+.subhead { font-size: .9rem; margin-top: 4px; }
+.controls, .timeline-header, .timeline-years { gap: 8px; }
+.timeline { margin-bottom: 10px; padding: 9px 12px; }
+.timeline-header { margin-bottom: 4px; }
+.timeline-header h2, .panel-header h2 { font-size: 1.05rem; }
+.timeline button { min-height: 34px; font-size: .875rem; }
+.timeline-months { gap: 5px; }
+.notice { margin-bottom: 10px; padding: 8px 12px; font-size: .875rem; }
+.cards { gap: 9px; margin-bottom: 10px; }
+.card { padding: 10px 12px; min-width: 0; }
+.card p { margin-bottom: 4px; }
+.card strong { font-size: clamp(1.1rem, 2vw, 1.5rem); overflow-wrap: anywhere; }
+.card small { margin-top: 3px; }
+.panel-header { padding: 9px 12px; gap: 8px; align-items: center; }
+.panel-header .eyebrow { margin-bottom: 4px; }
+.table-wrap th, .table-wrap td { padding: 7px 10px; }
+.dashboard-visuals { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr); gap: 10px; margin-bottom: 10px; }
+.dashboard-visuals > .panel { min-width: 0; }
+.trend { margin-bottom: 0; }
+.trend-plot svg { height: clamp(205px, 20vw, 265px); min-width: 560px; }
+#trend-status, .trend-values { margin: 7px 12px; }
+.trend-legend { margin: 4px 0; padding: 0 12px; }
+.campaign-summary .muted { margin: 4px 0 0; text-transform: capitalize; }
+.campaign-summary table { min-width: 0; }
+.campaign-summary th:last-child, .campaign-summary td:last-child { text-align: right; }
+.campaign-summary tbody tr:nth-child(odd) { background: #e9f4f4; }
+.campaign-summary td:first-child { white-space: normal; }
+.campaign-summary td span { display: block; color: var(--muted); font-size: .82rem; }
+@media (max-width: 760px) {
+  .dashboard-visuals { grid-template-columns: minmax(0, 1fr); }
+}

@@ -21,6 +21,9 @@ const sortDirection = document.querySelector("#sort-direction");
 let descending = true;
 const exportCsv = document.querySelector("#export-csv");
 const funnelTable = document.querySelector("#funnel-table");
+const summaryPeriod = document.querySelector("#campaign-summary-period");
+const summaryMetric = document.querySelector("#campaign-summary-metric");
+const summaryRows = document.querySelector("#campaign-summary-rows");
 const tableRows = document.querySelector("#rows");
 const rowCount = document.querySelector("#row-count");
 const updated = document.querySelector("#updated");
@@ -68,6 +71,18 @@ function renderCards(totals) {
   const leadToAttendance = ratioPercent(totals.attendances, totals.leads);
   const cardData = [["Investimento", amount(totals.spend), "Meta Ads"], ["Leads Meta", count(totals.leads), totals.leads ? `CPL ${amount(totals.spend / totals.leads)}` : totals.leads === null ? "Dados indisponíveis" : "Sem leads"], ["Agendamentos", count(totals.appointments), "Leads únicos"], ["Atendimentos", count(totals.attendances), `Atendimentos/Leads ${percent(leadToAttendance)}`], ["Vendas", count(totals.sales), "Base comercial"], ["Faturamento", amount(totals.revenue), roas === null ? "ROAS —" : `ROAS ${roas.toFixed(2)}x`]];
   cards.innerHTML = cardData.map(([label, value, detail]) => `<article class="card"><p>${label}</p><strong>${value}</strong><small>${detail}</small></article>`).join("");
+}
+
+function renderCampaignSummary({ rows, totals }) {
+  const metric = totals.leads == null ? "appointments" : "leads";
+  summaryMetric.textContent = metric === "leads" ? "Leads" : "Agend.";
+  const campaigns = rows
+    .filter((row) => row.family !== "SEM CAMPANHA" && Number.isFinite(row[metric]))
+    .sort((a, b) => b[metric] - a[metric])
+    .slice(0, 5);
+  summaryRows.innerHTML = campaigns.length
+    ? campaigns.map((row) => `<tr><td><strong>${escape(row.family)}</strong><span>${escape(row.location)}</span></td><td>${count(row[metric])}</td></tr>`).join("")
+    : '<tr><td colspan="2">Sem campanhas no período.</td></tr>';
 }
 
 function renderRows() {
@@ -123,6 +138,8 @@ async function load({ initializeTrend = false } = {}) {
   const month = selectedMonth;
   notice.className = "notice loading";
   notice.textContent = "Atualizando Meta Ads e planilhas...";
+  summaryPeriod.textContent = selectedPeriod.textContent;
+  summaryRows.innerHTML = '<tr><td colspan="2">Carregando dados…</td></tr>';
   refresh.disabled = true;
   exportCsv.disabled = true;
   try {
@@ -143,6 +160,7 @@ async function load({ initializeTrend = false } = {}) {
       }))
     };
     renderCards(dashboard.totals);
+    renderCampaignSummary(dashboard);
     renderRows();
     notice.className = "notice";
     notice.textContent = dashboard.mode === "demo"
@@ -158,6 +176,7 @@ async function load({ initializeTrend = false } = {}) {
   } catch (error) {
     if (request !== currentRequest) return;
     dashboard = undefined;
+    summaryRows.innerHTML = '<tr><td colspan="2">Dados indisponíveis.</td></tr>';
     cards.innerHTML = ""; tableRows.innerHTML = ""; rowCount.textContent = "";
     notice.className = "notice error";
     notice.textContent = `${error.message} Configure as variáveis da Vercel conforme o README e atualize novamente.`;
