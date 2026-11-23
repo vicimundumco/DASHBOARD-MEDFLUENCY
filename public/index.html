@@ -78,6 +78,25 @@
             </table>
           </div>
         </section>
+        <section class="panel share-panel" aria-labelledby="share-title">
+          <div class="panel-header">
+            <h2 id="share-title">Participação no mês</h2>
+            <div class="controls">
+              <label>Indicador
+                <select id="share-metric">
+                  <option value="leads">Leads</option>
+                  <option value="appointments">Agendamentos</option>
+                  <option value="attendances">Atendimentos</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <p id="share-period" class="muted" role="status"></p>
+          <div class="share-content">
+            <div id="share-chart" class="share-chart" aria-hidden="true" hidden><strong id="share-total"></strong><span>Total</span></div>
+            <ul id="share-legend" class="share-legend" aria-label="Participação por campanha"></ul>
+          </div>
+        </section>
       </div>
       <section class="panel">
         <div class="panel-header">

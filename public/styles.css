@@ -95,3 +95,14 @@ main { padding: 18px clamp(12px, 2.5vw, 36px) 16px; }
 @media (max-width: 760px) {
   .dashboard-visuals { grid-template-columns: minmax(0, 1fr); }
 }
+
+.share-panel { grid-column: 1 / -1; }
+#share-period { margin: 8px 12px 0; text-transform: capitalize; }
+.share-content { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 10px 12px; }
+.share-chart { display: grid; position: relative; place-content: center; width: 125px; aspect-ratio: 1; border-radius: 50%; text-align: center; isolation: isolate; flex: none; }
+.share-chart[hidden] { display: none; }
+.share-chart::before { content: ""; position: absolute; inset: 19%; border-radius: 50%; background: var(--card); z-index: -1; }
+.share-chart strong { font-size: 1.15rem; }
+.share-chart span { color: var(--muted); font-size: .8rem; }
+.share-legend { display: grid; gap: 4px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); flex: 1 1 250px; margin: 0; padding: 0; list-style: none; }
+.share-legend li { display: flex; justify-content: space-between; gap: 8px; border-left: 4px solid var(--share-color); padding: 4px 8px; font-size: .875rem; }

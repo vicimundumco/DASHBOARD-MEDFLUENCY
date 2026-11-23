@@ -9,7 +9,11 @@ const metrics = {
   attendances: ["Atendimentos", "count"],
   sales: ["Vendas", "count"],
   revenue: ["Faturamento", "currency"],
-  roas: ["ROAS", "multiple"]
+  roas: ["ROAS", "multiple"],
+  leadShare: ["Participação nos leads (%)", "percent", "leads"],
+  appointmentShare: ["Participação nos agendamentos (%)", "percent", "appointments"],
+  attendanceShare: ["Participação nos atendimentos (%)", "percent", "attendances"],
+  attendanceRate: ["Atendimentos/Leads (%)", "percent"]
 };
 
 const metric = document.querySelector("#trend-metric");
@@ -94,7 +98,7 @@ async function loadHistory() {
       if (Array.isArray(data?.rows)) {
         if (cache.size >= 24) cache.delete(cache.keys().next().value);
         cache.set(month, data);
-        return { month, rows: new Map(data.rows.map((row) => [campaignKey(row), row])) };
+        return { month, totals: data.totals, rows: new Map(data.rows.map((row) => [campaignKey(row), row])) };
       }
       if (month === end) cache.delete(month);
       return { month, rows: null };
@@ -127,15 +131,21 @@ async function loadHistory() {
 }
 
 function render() {
-  const [label, unit] = metrics[metric.value];
+  const [label, unit, shareOf] = metrics[metric.value];
   const format = (value) => unit === "currency" ? currency.format(value)
-    : unit === "multiple" ? `${number.format(value)}×` : number.format(value);
+    : unit === "multiple" ? `${number.format(value)}×`
+    : unit === "percent" ? `${number.format(value)}%` : number.format(value);
   const series = [...campaigns.querySelectorAll("input:checked")].map((input, index) => ({
     name: input.parentElement.textContent,
     color: colors[index % colors.length],
     dash: ["", "8 4", "3 4"][Math.floor(index / colors.length) % 3],
-    points: history.map(({ rows }) => {
-      const value = rows?.get(input.value)?.[metric.value];
+    points: history.map(({ rows, totals }) => {
+      const row = rows?.get(input.value);
+      if (shareOf) return Number.isFinite(row?.[shareOf]) && totals?.[shareOf] > 0
+        ? (row[shareOf] / totals[shareOf]) * 100 : null;
+      if (metric.value === "attendanceRate") return row?.leads > 0 && Number.isFinite(row.attendances)
+        ? (row.attendances / row.leads) * 100 : null;
+      const value = row?.[metric.value];
       return Number.isFinite(value) ? value : null;
     })
   }));

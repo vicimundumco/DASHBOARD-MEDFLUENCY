@@ -21,6 +21,13 @@ const sortDirection = document.querySelector("#sort-direction");
 let descending = true;
 const exportCsv = document.querySelector("#export-csv");
 const funnelTable = document.querySelector("#funnel-table");
+const shareMetric = document.querySelector("#share-metric");
+const sharePeriod = document.querySelector("#share-period");
+const shareChart = document.querySelector("#share-chart");
+const shareTotal = document.querySelector("#share-total");
+const shareLegend = document.querySelector("#share-legend");
+const shareColors = ["#006d70", "#00b9ba", "#f5a000", "#ff7711", "#285a86", "#aab8bc"];
+let preferredShareMetric = "leads";
 const summaryPeriod = document.querySelector("#campaign-summary-period");
 const summaryMetric = document.querySelector("#campaign-summary-metric");
 const summaryRows = document.querySelector("#campaign-summary-rows");
@@ -72,6 +79,57 @@ function renderCards(totals) {
   const cardData = [["Investimento", amount(totals.spend), "Meta Ads"], ["Leads Meta", count(totals.leads), totals.leads ? `CPL ${amount(totals.spend / totals.leads)}` : totals.leads === null ? "Dados indisponíveis" : "Sem leads"], ["Agendamentos", count(totals.appointments), "Leads únicos"], ["Atendimentos", count(totals.attendances), `Atendimentos/Leads ${percent(leadToAttendance)}`], ["Vendas", count(totals.sales), "Base comercial"], ["Faturamento", amount(totals.revenue), roas === null ? "ROAS —" : `ROAS ${roas.toFixed(2)}x`]];
   cards.innerHTML = cardData.map(([label, value, detail]) => `<article class="card"><p>${label}</p><strong>${value}</strong><small>${detail}</small></article>`).join("");
 }
+
+function renderShare(message) {
+  shareChart.hidden = true;
+  shareLegend.replaceChildren();
+  shareMetric.disabled = Boolean(message);
+  if (message) {
+    sharePeriod.textContent = message;
+    return;
+  }
+
+  for (const option of shareMetric.options) {
+    option.disabled = !Number.isFinite(dashboard.totals[option.value]);
+  }
+  const preferred = [...shareMetric.options].find((option) => option.value === preferredShareMetric && !option.disabled);
+  shareMetric.value = preferred?.value || [...shareMetric.options].find((option) => !option.disabled)?.value || "";
+  const metric = shareMetric.value;
+  const total = dashboard.totals[metric];
+  if (!(total > 0)) {
+    sharePeriod.textContent = `${selectedPeriod.textContent} · Sem dados para este indicador`;
+    return;
+  }
+
+  const groups = dashboard.rows.filter((row) => row[metric] > 0)
+    .sort((a, b) => b[metric] - a[metric]).slice(0, 5)
+    .map((row) => [row.family === "SEM CAMPANHA" ? "Sem campanha" : `${row.family} · ${row.location}`, row[metric]]);
+  const remainder = total - groups.reduce((sum, [, value]) => sum + value, 0);
+  if (remainder > 0) groups.push(["Demais campanhas", remainder]);
+  let start = 0;
+  const slices = groups.map(([label, value], index) => {
+    const color = shareColors[index];
+    const percentage = ratioPercent(value, total);
+    const item = document.createElement("li");
+    item.style.setProperty("--share-color", color);
+    item.innerHTML = `<span>${escape(label)}</span><strong>${percent(percentage)}</strong>`;
+    item.title = `${label}: ${count(value)} de ${count(total)}`;
+    shareLegend.append(item);
+    const stop = Math.min(100, start + percentage);
+    const slice = `${color} ${start}% ${stop}%`;
+    start = stop;
+    return slice;
+  });
+  sharePeriod.textContent = selectedPeriod.textContent;
+  shareChart.style.background = `conic-gradient(${slices.join(", ")})`;
+  shareTotal.textContent = count(total);
+  shareChart.hidden = false;
+}
+
+shareMetric.addEventListener("change", () => {
+  preferredShareMetric = shareMetric.value;
+  renderShare();
+});
 
 function renderCampaignSummary({ rows, totals }) {
   const metric = totals.leads == null ? "appointments" : "leads";
@@ -138,6 +196,7 @@ async function load({ initializeTrend = false } = {}) {
   const month = selectedMonth;
   notice.className = "notice loading";
   notice.textContent = "Atualizando Meta Ads e planilhas...";
+  renderShare("Carregando participação…");
   summaryPeriod.textContent = selectedPeriod.textContent;
   summaryRows.innerHTML = '<tr><td colspan="2">Carregando dados…</td></tr>';
   refresh.disabled = true;
@@ -161,6 +220,7 @@ async function load({ initializeTrend = false } = {}) {
     };
     renderCards(dashboard.totals);
     renderCampaignSummary(dashboard);
+    renderShare();
     renderRows();
     notice.className = "notice";
     notice.textContent = dashboard.mode === "demo"
@@ -176,6 +236,7 @@ async function load({ initializeTrend = false } = {}) {
   } catch (error) {
     if (request !== currentRequest) return;
     dashboard = undefined;
+    renderShare("Participação indisponível.");
     summaryRows.innerHTML = '<tr><td colspan="2">Dados indisponíveis.</td></tr>';
     cards.innerHTML = ""; tableRows.innerHTML = ""; rowCount.textContent = "";
     notice.className = "notice error";
