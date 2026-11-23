@@ -106,3 +106,10 @@ main { padding: 18px clamp(12px, 2.5vw, 36px) 16px; }
 .share-chart span { color: var(--muted); font-size: .8rem; }
 .share-legend { display: grid; gap: 4px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); flex: 1 1 250px; margin: 0; padding: 0; list-style: none; }
 .share-legend li { display: flex; justify-content: space-between; gap: 8px; border-left: 4px solid var(--share-color); padding: 4px 8px; font-size: .875rem; }
+
+.daily-panel { margin-bottom: 20px; }
+.daily-plot { min-height: 220px; display: flex; align-items: end; gap: clamp(2px, .5vw, 8px); padding: 22px 22px 14px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+.daily-bar { min-width: 28px; height: 170px; display: grid; grid-template-rows: 1fr auto; align-items: end; gap: 7px; text-align: center; color: var(--muted); font-size: .72rem; }
+.daily-bar span { display: block; width: 100%; min-height: 4px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, #00b9ba, var(--brand)); transition: height .2s ease; }
+.daily-bar small { font: inherit; }
+.daily-values summary { cursor: pointer; padding: 14px 22px; color: var(--brand-dark); font-weight: 750; }

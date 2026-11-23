@@ -38,6 +38,38 @@
 
       <section id="notice" class="notice loading">Carregando dados das fontes...</section>
       <section id="cards" class="cards" aria-live="polite"></section>
+      <section class="panel daily-panel" aria-labelledby="daily-title">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">DIA A DIA</p>
+            <h2 id="daily-title">Performance diária</h2>
+            <p id="daily-period" class="muted"></p>
+          </div>
+          <div class="controls">
+            <label>Indicador
+              <select id="daily-metric">
+                <option value="spend">Investimento</option>
+                <option value="leads">Leads</option>
+                <option value="linkClicks">Cliques no link</option>
+                <option value="cpl">CPL</option>
+                <option value="cpc">CPC link</option>
+                <option value="ctr">CTR link</option>
+                <option value="cpm">CPM</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div id="daily-plot" class="daily-plot" aria-label="Gráfico de performance diária"></div>
+        <details class="daily-values">
+          <summary>Ver tabela diária</summary>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Investimento</th><th>Leads</th><th>CPL</th><th>Cliques link</th><th>CPC link</th><th>CTR link</th><th>CPM</th><th>Lead/clique</th></tr></thead>
+              <tbody id="daily-rows"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
       <div class="dashboard-visuals">
         <section class="panel trend" aria-labelledby="trend-title">
           <div class="panel-header">

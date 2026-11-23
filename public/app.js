@@ -16,6 +16,10 @@ const search = document.querySelector("#search");
 const refresh = document.querySelector("#refresh");
 const notice = document.querySelector("#notice");
 const cards = document.querySelector("#cards");
+const dailyMetric = document.querySelector("#daily-metric");
+const dailyPeriod = document.querySelector("#daily-period");
+const dailyPlot = document.querySelector("#daily-plot");
+const dailyRows = document.querySelector("#daily-rows");
 const sortField = document.querySelector("#sort-field");
 const sortDirection = document.querySelector("#sort-direction");
 let descending = true;
@@ -78,6 +82,52 @@ function renderCards(totals) {
   const leadToAttendance = ratioPercent(totals.attendances, totals.leads);
   const cardData = [["Investimento", amount(totals.spend), "Meta Ads"], ["Leads Meta", count(totals.leads), totals.leads ? `CPL ${amount(totals.spend / totals.leads)}` : totals.leads === null ? "Dados indisponíveis" : "Sem leads"], ["Agendamentos", count(totals.appointments), "Leads únicos"], ["Atendimentos", count(totals.attendances), `Atendimentos/Leads ${percent(leadToAttendance)}`], ["Vendas", count(totals.sales), "Base comercial"], ["Faturamento", amount(totals.revenue), roas === null ? "ROAS —" : `ROAS ${roas.toFixed(2)}x`]];
   cards.innerHTML = cardData.map(([label, value, detail]) => `<article class="card"><p>${label}</p><strong>${value}</strong><small>${detail}</small></article>`).join("");
+}
+
+function dailyValue(row, metric) {
+  return row[metric] ?? null;
+}
+
+function dailyLabel(metric, value) {
+  if (metric === "spend" || metric === "cpl" || metric === "cpc" || metric === "cpm") return amount(value);
+  if (metric === "ctr" || metric === "leadRate") return percent(value);
+  return count(value);
+}
+
+function renderDaily() {
+  const days = dashboard?.daily || [];
+  dailyPeriod.textContent = days.length
+    ? `${selectedPeriod.textContent} · Dados de Meta Ads por dia`
+    : `${selectedPeriod.textContent} · Dados diários indisponíveis para este mês`;
+  dailyRows.innerHTML = days.length ? days.map((row) => {
+    const date = new Date(`${row.date}T12:00:00`).toLocaleDateString("pt-BR");
+    return `<tr><td>${date}</td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td></tr>`;
+  }).join("") : '<tr><td colspan="9">Sem dados diários para este mês.</td></tr>';
+
+  for (const option of dailyMetric.options) {
+    option.disabled = !days.some((row) => Number.isFinite(dailyValue(row, option.value)));
+  }
+  if (dailyMetric.selectedOptions[0]?.disabled) {
+    dailyMetric.value = [...dailyMetric.options].find((option) => !option.disabled)?.value || "spend";
+  }
+  const metric = dailyMetric.value;
+  const maximum = Math.max(...days.map((row) => Number(dailyValue(row, metric)) || 0), 0);
+  dailyPlot.replaceChildren();
+  if (!days.length || maximum === 0) {
+    dailyPlot.textContent = "Sem dados para exibir.";
+    return;
+  }
+  days.forEach((row) => {
+    const item = document.createElement("div");
+    item.className = "daily-bar";
+    item.title = `${new Date(`${row.date}T12:00:00`).toLocaleDateString("pt-BR")}: ${dailyLabel(metric, dailyValue(row, metric))}`;
+    const bar = document.createElement("span");
+    bar.style.height = `${Math.max(4, (Number(dailyValue(row, metric)) / maximum) * 100)}%`;
+    const label = document.createElement("small");
+    label.textContent = row.date.slice(-2);
+    item.append(bar, label);
+    dailyPlot.append(item);
+  });
 }
 
 function renderShare(message) {
@@ -219,6 +269,7 @@ async function load({ initializeTrend = false } = {}) {
       }))
     };
     renderCards(dashboard.totals);
+    renderDaily();
     renderCampaignSummary(dashboard);
     renderShare();
     renderRows();
@@ -279,5 +330,6 @@ timeline.addEventListener("click", (event) => {
 });
 renderTimeline();
 selectPeriod();
+dailyMetric.addEventListener("change", renderDaily);
 refresh.addEventListener("click", load);
 load({ initializeTrend: true });

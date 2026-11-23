@@ -26,6 +26,12 @@ const monthBounds = (month) => {
   return { since: `${month}-01`, until: `${month}-${String(lastDay).padStart(2, "0")}` };
 };
 
+const reportBounds = (month) => {
+  const bounds = monthBounds(month);
+  const today = new Date().toISOString().slice(0, 10);
+  return month === today.slice(0, 7) && today < bounds.until ? { ...bounds, until: today } : bounds;
+};
+
 const isInMonth = (dateValue, month) => {
   const value = String(dateValue ?? "");
   const [year, monthNumber] = month.split("-");
@@ -143,7 +149,7 @@ async function metaCampaigns(month) {
 }
 
 async function metaLiveDashboard(month) {
-  const meta = await metaCampaigns(month);
+  const [meta, daily] = await Promise.all([metaCampaigns(month), metaDaily(month)]);
   const rows = mergeData(meta, [], []).map((row) => ({
     ...row, appointments: null, attendances: null, sales: null, revenue: null,
     cpa: null, leadToAttendanceRate: null, roas: null
@@ -154,9 +160,39 @@ async function metaLiveDashboard(month) {
   summary.sales = null;
   summary.revenue = null;
   return {
-    month, mode: "meta-live", generatedAt: new Date().toISOString(), totals: summary, rows,
+    month, mode: "meta-live", generatedAt: new Date().toISOString(), totals: summary, rows, daily,
     sources: { metaAccounts: (process.env.META_AD_ACCOUNT_IDS || "").split(",").filter(Boolean), salesSheet: null, appointmentSheet: null }
   };
+}
+
+async function metaDaily(month) {
+  const accountIds = (process.env.META_AD_ACCOUNT_IDS || DEFAULT_ACCOUNTS.join(","))
+    .split(",").map((id) => id.trim()).filter(Boolean);
+  const { since, until } = reportBounds(month);
+  const responses = await Promise.all(accountIds.map((accountId) => metaFetch(`act_${accountId}/insights`, {
+    level: "campaign", time_range: JSON.stringify({ since, until }), time_increment: "1",
+    fields: "date_start,spend,impressions,reach,clicks,inline_link_clicks,actions", limit: "5000"
+  })));
+  const byDay = new Map();
+  responses.flatMap((response) => response.data || []).forEach((entry) => {
+    if (!entry.date_start) return;
+    const current = byDay.get(entry.date_start) || { date: entry.date_start, spend: 0, leads: 0, linkClicks: 0, impressions: 0, reach: 0 };
+    const lead = (entry.actions || []).find((item) => item.action_type === "lead");
+    current.spend += asNumber(entry.spend);
+    current.leads += asNumber(lead?.value);
+    current.linkClicks += asNumber(entry.inline_link_clicks || entry.clicks);
+    current.impressions += asNumber(entry.impressions);
+    current.reach += asNumber(entry.reach);
+    byDay.set(entry.date_start, current);
+  });
+  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)).map((row) => ({
+    ...row,
+    cpl: row.leads ? row.spend / row.leads : null,
+    cpc: row.linkClicks ? row.spend / row.linkClicks : null,
+    ctr: row.impressions ? (row.linkClicks / row.impressions) * 100 : null,
+    cpm: row.impressions ? (row.spend / row.impressions) * 1000 : null,
+    leadRate: row.linkClicks ? (row.leads / row.linkClicks) * 100 : null
+  }));
 }
 
 async function salesRows(month) {
