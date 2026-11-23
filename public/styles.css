@@ -292,3 +292,20 @@ body { overflow-x: hidden; }
   .timeline-years { gap: 6px; }
   .timeline-years button { padding-inline: 8px; font-size: .82rem; }
 }
+
+
+/* Totals remain visible as the summary of the currently filtered table. */
+.total-row td {
+  background: #edf5ff;
+  border-top: 2px solid #9ec9f8;
+  border-bottom: 0;
+  color: #075ca8;
+  font-weight: 700;
+}
+tbody tr.total-row:hover td { background: #e3f0ff; }
+.total-row .campaign strong { color: #075ca8; }
+.total-row .campaign span { color: #3976a9; font-weight: 500; }
+@media (max-width: 720px) {
+  .table-wrap .total-row td:first-child,
+  .table-wrap tbody tr.total-row:hover td:first-child { background: #edf5ff; }
+}
