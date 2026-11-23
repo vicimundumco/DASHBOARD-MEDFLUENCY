@@ -33,6 +33,7 @@ let history = [];
 let initialized = false;
 
 for (const [key, [label]] of Object.entries(metrics)) metric.add(new Option(label, key));
+metric.value = "appointments";
 
 export function monthRange(end, count) {
   const [year, month] = end.split("-").map(Number);
@@ -107,7 +108,10 @@ async function loadHistory() {
     for (const [key, row] of period.rows || []) options.set(key, campaignName(row));
   }
   if (!initialized && options.size) {
-    for (const key of [...options.keys()].slice(0, 2)) selected.add(key);
+    const coverage = (key) => history.filter(({ rows }) => Number.isFinite(rows?.get(key)?.appointments)).length;
+    const ranked = [...options.keys()].map((key) => ({ key, months: coverage(key) }))
+      .sort((a, b) => b.months - a.months);
+    for (const { key } of ranked.slice(0, 2)) selected.add(key);
     initialized = true;
   }
   for (const [key, name] of [...options].sort((a, b) => a[1].localeCompare(b[1], "pt-BR"))) {
@@ -147,7 +151,10 @@ function render() {
     return;
   }
 
-  status.textContent = available === 1 ? "Só há dados de um mês neste período."
+  const hasLine = series.some(({ points }) =>
+    points.some((value, index) => index > 0 && value !== null && points[index - 1] !== null)
+  );
+  status.textContent = !hasLine ? "O indicador selecionado precisa de valores em meses consecutivos para formar uma linha."
     : available < history.length ? `${available} de ${history.length} meses com dados.` : "";
   const min = Math.min(0, ...points);
   const max = Math.max(0, ...points);

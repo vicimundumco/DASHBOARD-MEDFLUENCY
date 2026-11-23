@@ -116,7 +116,7 @@ exportCsv.addEventListener("click", () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
-async function load() {
+async function load({ initializeTrend = false } = {}) {
   currentRequest?.abort();
   const request = new AbortController();
   currentRequest = request;
@@ -127,7 +127,9 @@ async function load() {
   exportCsv.disabled = true;
   try {
     const monthlyResponse = fetch(`/api/dashboard?month=${month}`, { signal: request.signal });
-    updateTrend(month, monthlyResponse.then(async (response) => response.ok ? response.clone().json() : null));
+    if (initializeTrend) {
+      updateTrend(month, monthlyResponse.then(async (response) => response.ok ? response.clone().json() : null));
+    }
     const response = await monthlyResponse;
     const data = await response.json();
     if (request !== currentRequest) return;
@@ -196,4 +198,4 @@ timeline.addEventListener("click", (event) => {
 renderTimeline();
 selectPeriod();
 refresh.addEventListener("click", load);
-load();
+load({ initializeTrend: true });
