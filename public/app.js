@@ -71,7 +71,7 @@ const decimal = (value, digits = 2) => value === null || value === undefined ? "
 const percent = (value) => value === null || value === undefined ? "—" : `${decimal(value)}%`;
 const escape = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[char]);
 
-const ratioPercent = (numerator, denominator) => denominator ? (numerator / denominator) * 100 : null;
+const ratioPercent = (numerator, denominator) => numerator == null || denominator == null || !denominator ? null : (numerator / denominator) * 100;
 
 function renderCards(totals) {
   const roas = totals.spend ? totals.revenue / totals.spend : null;
@@ -229,6 +229,8 @@ async function load({ initializeTrend = false } = {}) {
         ? "Histórico de agendamentos e atendimentos. Os demais indicadores estão indisponíveis neste mês."
       : dashboard.mode === "snapshot"
         ? `Snapshot fechado: ${dashboard.scope}. Meta, vendas, agendamentos e atendimentos consolidados.`
+      : dashboard.mode === "meta-live"
+        ? "Meta Ads ao vivo. Vendas, faturamento, agendamentos e atendimentos serão ativados na próxima conexão."
         : `Dados consolidados para ${month}. CA01 e CA02 estão incluídas.`;
     updated.textContent = dashboard.generatedAt
       ? `Última atualização: ${new Date(dashboard.generatedAt).toLocaleString("pt-BR")}.`

@@ -10,7 +10,13 @@ const normal = (value = "") => String(value)
 
 const asNumber = (value) => {
   if (typeof value === "number") return value;
-  return Number(String(value ?? "0").replace(/R\$|\./g, "").replace(",", ".")) || 0;
+  const raw = String(value ?? "0").replace(/R\$\s?/g, "").replace(/\s/g, "");
+  const comma = raw.lastIndexOf(",");
+  const dot = raw.lastIndexOf(".");
+  const normalized = comma > -1 && dot > -1
+    ? (comma > dot ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/,/g, ""))
+    : raw.replace(",", ".");
+  return Number(normalized) || 0;
 };
 
 const monthBounds = (month) => {
@@ -133,6 +139,23 @@ async function metaCampaigns(month) {
     });
   }));
   return groups.flat().filter((campaign) => campaign.active || campaign.spend > 0);
+}
+
+async function metaLiveDashboard(month) {
+  const meta = await metaCampaigns(month);
+  const rows = mergeData(meta, [], []).map((row) => ({
+    ...row, appointments: null, attendances: null, sales: null, revenue: null,
+    cpa: null, leadToAttendanceRate: null, roas: null
+  }));
+  const summary = totals(rows);
+  summary.appointments = null;
+  summary.attendances = null;
+  summary.sales = null;
+  summary.revenue = null;
+  return {
+    month, mode: "meta-live", generatedAt: new Date().toISOString(), totals: summary, rows,
+    sources: { metaAccounts: (process.env.META_AD_ACCOUNT_IDS || "").split(",").filter(Boolean), salesSheet: null, appointmentSheet: null }
+  };
 }
 
 async function salesRows(month) {
@@ -268,6 +291,7 @@ export default async function handler(request, response) {
   try {
     const snapshot = snapshotDashboard(month);
     if (snapshot) return response.status(200).json(snapshot);
+    if (process.env.DASHBOARD_MODE === "meta-live") return response.status(200).json(await metaLiveDashboard(month));
     if (process.env.DASHBOARD_MODE === "demo") return response.status(200).json(demoDashboard(month));
     const [meta, sales, appointments] = await Promise.all([metaCampaigns(month), salesRows(month), appointmentRows(month)]);
     const rows = mergeData(meta, sales, appointments);
