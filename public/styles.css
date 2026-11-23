@@ -228,3 +228,67 @@ footer { color: var(--muted); }
   .controls label { flex: 1 1 140px; }
   .controls input, .controls select { width: 100%; }
 }
+
+
+/* Mobile-first dashboard refinements */
+body { overflow-x: hidden; }
+.table-wrap { -webkit-overflow-scrolling: touch; scrollbar-color: #c7c7cc transparent; }
+@media (max-width: 980px) {
+  .topbar { align-items: flex-start; flex-direction: column; }
+  .topbar > div:first-child { max-width: 46rem; }
+  .topbar .controls { justify-content: flex-start; }
+  .dashboard-visuals { grid-template-columns: 1fr; }
+  .share-panel { grid-column: auto; }
+}
+@media (max-width: 720px) {
+  main { padding: 20px 14px 30px; }
+  .topbar { padding-bottom: 20px; }
+  .topbar h1 { font-size: clamp(2.15rem, 12vw, 3.15rem); }
+  .subhead { font-size: 1rem; }
+  .controls, .funnel-actions, .funnel-actions .controls { width: 100%; gap: 9px; }
+  .controls label { flex: 1 1 138px; min-width: 0; }
+  .controls input, .controls select, .controls button { min-height: 46px; width: 100%; font-size: 1rem; }
+  .controls button { flex: 1 1 100%; }
+  .timeline { padding: 15px; }
+  .timeline-header { align-items: flex-start; }
+  .timeline-years { width: 100%; justify-content: space-between; }
+  .timeline-years button { flex: 1 1 auto; }
+  .timeline-months { display: flex; gap: 7px; padding: 5px 0; overflow-x: auto; scroll-snap-type: x proximity; }
+  .timeline-months button { flex: 0 0 52px; scroll-snap-align: start; }
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .card { min-height: 145px; padding: 14px; }
+  .card::before { margin-bottom: 11px; }
+  .card strong { font-size: 1.45rem; }
+  .panel, .card { border-radius: 16px; }
+  .panel-header { align-items: flex-start; padding: 16px; }
+  .panel-header > .controls { margin-top: 2px; }
+  .daily-plot { min-height: 190px; gap: 7px; padding: 16px 14px 12px; }
+  .daily-bar { min-width: 34px; height: 145px; }
+  .daily-detail-note { padding: 12px 16px; font-size: .9rem; line-height: 1.4; }
+  .share-content { padding: 14px 16px; }
+  .share-chart { width: 118px; }
+  .trend-controls { width: 100%; }
+  .trend-controls label { flex: 1 1 150px; }
+  .trend-picker { width: 100%; }
+  .trend-picker summary { width: 100%; min-height: 46px; }
+  #trend-campaigns { position: relative; width: 100%; margin-top: 8px; }
+  .table-wrap { position: relative; border-radius: 0 0 16px 16px; }
+  .table-wrap::after { content: "Deslize para ver mais"; position: sticky; left: calc(100% - 154px); display: block; width: max-content; margin: 6px 8px 8px auto; padding: 4px 8px; border-radius: 999px; background: #1d1d1f0d; color: var(--muted); font-size: .75rem; pointer-events: none; }
+  .table-wrap table { min-width: 1040px; }
+  .table-wrap th, .table-wrap td { padding: 11px 12px; font-size: .9rem; }
+  .table-wrap th:first-child, .table-wrap td:first-child { position: sticky; left: 0; z-index: 1; box-shadow: 8px 0 12px #00000008; }
+  .table-wrap th:first-child { background: #f7f7f8; }
+  .table-wrap td:first-child { background: #fff; }
+  .table-wrap tbody tr:hover td:first-child { background: #f5f9ff; }
+  .campaign { min-width: 210px; }
+  .funnel-actions { align-items: stretch; }
+  .funnel-actions .controls { align-items: stretch; }
+  .funnel-actions .controls button { flex: 1 1 140px; }
+  footer { padding: 16px 2px 2px; font-size: .85rem; }
+}
+@media (max-width: 390px) {
+  .cards { grid-template-columns: 1fr; }
+  .card { min-height: auto; }
+  .timeline-years { gap: 6px; }
+  .timeline-years button { padding-inline: 8px; font-size: .82rem; }
+}
