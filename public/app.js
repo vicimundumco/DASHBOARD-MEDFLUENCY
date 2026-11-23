@@ -20,6 +20,12 @@ const dailyMetric = document.querySelector("#daily-metric");
 const dailyPeriod = document.querySelector("#daily-period");
 const dailyPlot = document.querySelector("#daily-plot");
 const dailyRows = document.querySelector("#daily-rows");
+const dailyDate = document.querySelector("#daily-date");
+const dailyFamily = document.querySelector("#daily-family");
+const dailySearch = document.querySelector("#daily-search");
+const dailyDetailPeriod = document.querySelector("#daily-detail-period");
+const dailyDetailRows = document.querySelector("#daily-detail-rows");
+let selectedDailyDate = "";
 const sortField = document.querySelector("#sort-field");
 const sortDirection = document.querySelector("#sort-direction");
 let descending = true;
@@ -94,32 +100,55 @@ function dailyLabel(metric, value) {
   return count(value);
 }
 
+function renderDailyDetail() {
+  const date = selectedDailyDate;
+  const family = dailyFamily.value;
+  const term = normalSearch(dailySearch.value);
+  const rows = (dashboard?.dailyDetails || []).filter((row) => row.date === date)
+    .filter((row) => !family || row.family === family)
+    .filter((row) => normalSearch([row.family, row.location, ...row.campaignNames].join(" ")).includes(term))
+    .sort((a, b) => b.spend - a.spend);
+  dailyDetailPeriod.textContent = date
+    ? `${new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR")} · ${rows.length} localidade${rows.length === 1 ? "" : "s"} com entrega`
+    : "Selecione um dia no gráfico acima.";
+  dailyDetailRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · "))}</span></div></td><td><span class="badge active">Rodou no dia</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas == null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("")
+    : '<tr><td colspan="15">Nenhuma localidade com entrega para este filtro.</td></tr>';
+}
+
+function normalSearch(value = "") {
+  return String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+}
+
 function renderDaily() {
   const days = dashboard?.daily || [];
+  if (!days.some((row) => row.date === selectedDailyDate)) selectedDailyDate = days.at(-1)?.date || "";
+  dailyDate.min = days[0]?.date || "";
+  dailyDate.max = days.at(-1)?.date || "";
+  dailyDate.value = selectedDailyDate;
   dailyPeriod.textContent = days.length
-    ? `${selectedPeriod.textContent} · Dados de Meta Ads por dia`
+    ? `${selectedPeriod.textContent} · Selecione uma barra para abrir as localidades do dia`
     : `${selectedPeriod.textContent} · Dados diários indisponíveis para este mês`;
   dailyRows.innerHTML = days.length ? days.map((row) => {
     const date = new Date(`${row.date}T12:00:00`).toLocaleDateString("pt-BR");
     return `<tr><td>${date}</td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td></tr>`;
   }).join("") : '<tr><td colspan="9">Sem dados diários para este mês.</td></tr>';
 
-  for (const option of dailyMetric.options) {
-    option.disabled = !days.some((row) => Number.isFinite(dailyValue(row, option.value)));
-  }
-  if (dailyMetric.selectedOptions[0]?.disabled) {
-    dailyMetric.value = [...dailyMetric.options].find((option) => !option.disabled)?.value || "spend";
-  }
+  for (const option of dailyMetric.options) option.disabled = !days.some((row) => Number.isFinite(dailyValue(row, option.value)));
+  if (dailyMetric.selectedOptions[0]?.disabled) dailyMetric.value = [...dailyMetric.options].find((option) => !option.disabled)?.value || "spend";
   const metric = dailyMetric.value;
   const maximum = Math.max(...days.map((row) => Number(dailyValue(row, metric)) || 0), 0);
   dailyPlot.replaceChildren();
   if (!days.length || maximum === 0) {
     dailyPlot.textContent = "Sem dados para exibir.";
+    renderDailyDetail();
     return;
   }
   days.forEach((row) => {
-    const item = document.createElement("div");
+    const item = document.createElement("button");
+    item.type = "button";
     item.className = "daily-bar";
+    item.dataset.date = row.date;
+    item.setAttribute("aria-pressed", String(row.date === selectedDailyDate));
     item.title = `${new Date(`${row.date}T12:00:00`).toLocaleDateString("pt-BR")}: ${dailyLabel(metric, dailyValue(row, metric))}`;
     const bar = document.createElement("span");
     bar.style.height = `${Math.max(4, (Number(dailyValue(row, metric)) / maximum) * 100)}%`;
@@ -128,6 +157,7 @@ function renderDaily() {
     item.append(bar, label);
     dailyPlot.append(item);
   });
+  renderDailyDetail();
 }
 
 function renderShare(message) {
@@ -331,5 +361,17 @@ timeline.addEventListener("click", (event) => {
 renderTimeline();
 selectPeriod();
 dailyMetric.addEventListener("change", renderDaily);
+dailyPlot.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-date]");
+  if (!button) return;
+  selectedDailyDate = button.dataset.date;
+  renderDaily();
+});
+dailyDate.addEventListener("change", () => {
+  selectedDailyDate = dailyDate.value;
+  renderDaily();
+});
+dailyFamily.addEventListener("change", renderDailyDetail);
+dailySearch.addEventListener("input", renderDailyDetail);
 refresh.addEventListener("click", load);
 load({ initializeTrend: true });

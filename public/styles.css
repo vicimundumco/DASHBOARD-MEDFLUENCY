@@ -113,3 +113,9 @@ main { padding: 18px clamp(12px, 2.5vw, 36px) 16px; }
 .daily-bar span { display: block; width: 100%; min-height: 4px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, #00b9ba, var(--brand)); transition: height .2s ease; }
 .daily-bar small { font: inherit; }
 .daily-values summary { cursor: pointer; padding: 14px 22px; color: var(--brand-dark); font-weight: 750; }
+
+.daily-detail-panel { margin-bottom: 20px; }
+.daily-detail-note { margin: 0; padding: 12px 22px; color: var(--muted); border-bottom: 1px solid var(--line); font-size: .86rem; }
+.daily-bar { border: 0; background: transparent; cursor: pointer; padding: 0; }
+.daily-bar[aria-pressed="true"] span { background: linear-gradient(180deg, #f5a000, #ff7711); box-shadow: 0 0 0 2px #f5a00055; }
+.daily-bar:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 4px; }

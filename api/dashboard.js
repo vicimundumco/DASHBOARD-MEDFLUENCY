@@ -149,7 +149,7 @@ async function metaCampaigns(month) {
 }
 
 async function metaLiveDashboard(month) {
-  const [meta, daily] = await Promise.all([metaCampaigns(month), metaDaily(month)]);
+  const [meta, dailyData] = await Promise.all([metaCampaigns(month), metaDaily(month)]);
   const rows = mergeData(meta, [], []).map((row) => ({
     ...row, appointments: null, attendances: null, sales: null, revenue: null,
     cpa: null, leadToAttendanceRate: null, roas: null
@@ -160,7 +160,8 @@ async function metaLiveDashboard(month) {
   summary.sales = null;
   summary.revenue = null;
   return {
-    month, mode: "meta-live", generatedAt: new Date().toISOString(), totals: summary, rows, daily,
+    month, mode: "meta-live", generatedAt: new Date().toISOString(), totals: summary, rows,
+    daily: dailyData.daily, dailyDetails: dailyData.details,
     sources: { metaAccounts: (process.env.META_AD_ACCOUNT_IDS || "").split(",").filter(Boolean), salesSheet: null, appointmentSheet: null }
   };
 }
@@ -169,30 +170,53 @@ async function metaDaily(month) {
   const accountIds = (process.env.META_AD_ACCOUNT_IDS || DEFAULT_ACCOUNTS.join(","))
     .split(",").map((id) => id.trim()).filter(Boolean);
   const { since, until } = reportBounds(month);
-  const responses = await Promise.all(accountIds.map((accountId) => metaFetch(`act_${accountId}/insights`, {
-    level: "campaign", time_range: JSON.stringify({ since, until }), time_increment: "1",
-    fields: "date_start,spend,impressions,reach,clicks,inline_link_clicks,actions", limit: "5000"
+  const responses = await Promise.all(accountIds.map(async (accountId) => ({
+    accountId,
+    result: await metaFetch(`act_${accountId}/insights`, {
+      level: "campaign", time_range: JSON.stringify({ since, until }), time_increment: "1",
+      fields: "date_start,campaign_id,campaign_name,spend,impressions,reach,clicks,inline_link_clicks,actions", limit: "5000"
+    })
   })));
   const byDay = new Map();
-  responses.flatMap((response) => response.data || []).forEach((entry) => {
+  const byDayCampaign = new Map();
+
+  responses.forEach(({ accountId, result }) => (result.data || []).forEach((entry) => {
     if (!entry.date_start) return;
-    const current = byDay.get(entry.date_start) || { date: entry.date_start, spend: 0, leads: 0, linkClicks: 0, impressions: 0, reach: 0 };
     const lead = (entry.actions || []).find((item) => item.action_type === "lead");
-    current.spend += asNumber(entry.spend);
-    current.leads += asNumber(lead?.value);
-    current.linkClicks += asNumber(entry.inline_link_clicks || entry.clicks);
-    current.impressions += asNumber(entry.impressions);
-    current.reach += asNumber(entry.reach);
-    byDay.set(entry.date_start, current);
-  });
-  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)).map((row) => ({
+    const metrics = {
+      spend: asNumber(entry.spend), leads: asNumber(lead?.value),
+      linkClicks: asNumber(entry.inline_link_clicks || entry.clicks),
+      impressions: asNumber(entry.impressions), reach: asNumber(entry.reach)
+    };
+    const daily = byDay.get(entry.date_start) || { date: entry.date_start, spend: 0, leads: 0, linkClicks: 0, impressions: 0, reach: 0 };
+    Object.entries(metrics).forEach(([name, value]) => { daily[name] += value; });
+    byDay.set(entry.date_start, daily);
+
+    const identity = campaignIdentity(entry.campaign_name || "SEM CAMPANHA");
+    const detailKey = `${entry.date_start}|${identity.key}`;
+    const detail = byDayCampaign.get(detailKey) || {
+      date: entry.date_start, key: identity.key, family: identity.family, location: identity.location,
+      campaignNames: [], accounts: [], active: true, spend: 0, leads: 0, linkClicks: 0, impressions: 0, reach: 0,
+      appointments: null, attendances: null, sales: null, revenue: null, roas: null
+    };
+    Object.entries(metrics).forEach(([name, value]) => { detail[name] += value; });
+    if (entry.campaign_name && !detail.campaignNames.includes(entry.campaign_name)) detail.campaignNames.push(entry.campaign_name);
+    if (!detail.accounts.includes(accountId)) detail.accounts.push(accountId);
+    byDayCampaign.set(detailKey, detail);
+  }));
+
+  const enrich = (row) => ({
     ...row,
     cpl: row.leads ? row.spend / row.leads : null,
     cpc: row.linkClicks ? row.spend / row.linkClicks : null,
     ctr: row.impressions ? (row.linkClicks / row.impressions) * 100 : null,
     cpm: row.impressions ? (row.spend / row.impressions) * 1000 : null,
     leadRate: row.linkClicks ? (row.leads / row.linkClicks) * 100 : null
-  }));
+  });
+  return {
+    daily: [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)).map(enrich),
+    details: [...byDayCampaign.values()].sort((a, b) => a.date.localeCompare(b.date) || b.spend - a.spend).map(enrich)
+  };
 }
 
 async function salesRows(month) {
