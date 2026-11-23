@@ -55,8 +55,8 @@ function selectPeriod() {
   }
 }
 
-const amount = (value) => formatCurrency.format(value || 0);
-const count = (value) => formatNumber.format(value || 0);
+const amount = (value) => (value == null ? "—" : formatCurrency.format(value));
+const count = (value) => (value == null ? "—" : formatNumber.format(value));
 const decimal = (value, digits = 2) => value === null || value === undefined ? "—" : Number(value).toLocaleString("pt-BR", { maximumFractionDigits: digits });
 const percent = (value) => value === null || value === undefined ? "—" : `${decimal(value)}%`;
 const escape = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[char]);
@@ -66,7 +66,7 @@ const ratioPercent = (numerator, denominator) => denominator ? (numerator / deno
 function renderCards(totals) {
   const roas = totals.spend ? totals.revenue / totals.spend : null;
   const leadToAttendance = ratioPercent(totals.attendances, totals.leads);
-  const cardData = [["Investimento", amount(totals.spend), "Meta Ads"], ["Leads Meta", count(totals.leads), totals.leads ? `CPL ${amount(totals.spend / totals.leads)}` : "Sem leads"], ["Agendamentos", count(totals.appointments), "Leads únicos"], ["Atendimentos", count(totals.attendances), `Atendimentos/Leads ${percent(leadToAttendance)}`], ["Vendas", count(totals.sales), "Base comercial"], ["Faturamento", amount(totals.revenue), roas === null ? "ROAS —" : `ROAS ${roas.toFixed(2)}x`]];
+  const cardData = [["Investimento", amount(totals.spend), "Meta Ads"], ["Leads Meta", count(totals.leads), totals.leads ? `CPL ${amount(totals.spend / totals.leads)}` : totals.leads === null ? "Dados indisponíveis" : "Sem leads"], ["Agendamentos", count(totals.appointments), "Leads únicos"], ["Atendimentos", count(totals.attendances), `Atendimentos/Leads ${percent(leadToAttendance)}`], ["Vendas", count(totals.sales), "Base comercial"], ["Faturamento", amount(totals.revenue), roas === null ? "ROAS —" : `ROAS ${roas.toFixed(2)}x`]];
   cards.innerHTML = cardData.map(([label, value, detail]) => `<article class="card"><p>${label}</p><strong>${value}</strong><small>${detail}</small></article>`).join("");
 }
 
@@ -88,7 +88,7 @@ function renderRows() {
   }
   exportCsv.disabled = refresh.disabled || rows.length === 0;
   rowCount.textContent = `${rows.length} resultado${rows.length === 1 ? "" : "s"}`;
-  tableRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · ") || "Sem campanha Meta no período")}</span></div></td><td><span class="badge ${row.active ? "active" : "paused"}">${row.active ? "Ativa" : "Rodou no mês"}</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${percent(row.leadShare)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("") : `<tr><td colspan="17">Nenhum resultado para esta busca.</td></tr>`;
+  tableRows.innerHTML = rows.length ? rows.map((row) => `<tr><td><div class="campaign"><strong>${escape(row.family)} · ${escape(row.location)}</strong><span>${escape(row.campaignNames.join(" · ") || (dashboard.mode === "historical" ? "" : "Sem campanha Meta no período"))}</span></div></td><td><span class="badge ${row.active ? "active" : "paused"}">${row.active == null ? "—" : row.active ? "Ativa" : "Rodou no mês"}</span></td><td>${amount(row.spend)}</td><td>${count(row.leads)}</td><td>${percent(row.leadShare)}</td><td>${amount(row.cpl)}</td><td>${count(row.linkClicks)}</td><td>${amount(row.cpc)}</td><td>${percent(row.ctr)}</td><td>${amount(row.cpm)}</td><td>${percent(row.leadRate)}</td><td>${count(row.appointments)}</td><td>${count(row.attendances)}</td><td>${percent(row.leadToAttendanceRate)}</td><td>${count(row.sales)}</td><td>${amount(row.revenue)}</td><td>${row.roas === null ? "—" : `${row.roas.toFixed(2)}x`}</td></tr>`).join("") : `<tr><td colspan="17">Nenhum resultado para esta busca.</td></tr>`;
 }
 
 function csvCell(text) {
@@ -145,10 +145,14 @@ async function load() {
     notice.className = "notice";
     notice.textContent = dashboard.mode === "demo"
       ? "Modo demonstração: métricas simuladas para validar a estrutura."
+      : dashboard.mode === "historical"
+        ? "Histórico de agendamentos e atendimentos. Os demais indicadores estão indisponíveis neste mês."
       : dashboard.mode === "snapshot"
         ? `Snapshot fechado: ${dashboard.scope}. Meta, vendas, agendamentos e atendimentos consolidados.`
         : `Dados consolidados para ${month}. CA01 e CA02 estão incluídas.`;
-    updated.textContent = `Última atualização: ${new Date(dashboard.generatedAt).toLocaleString("pt-BR")}.`;
+    updated.textContent = dashboard.generatedAt
+      ? `Última atualização: ${new Date(dashboard.generatedAt).toLocaleString("pt-BR")}.`
+      : "";
   } catch (error) {
     if (request !== currentRequest) return;
     dashboard = undefined;

@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { appointmentHistory } from "../lib/appointment-history.js";
 
 const META_GRAPH = "https://graph.facebook.com/v21.0";
 const DEFAULT_ACCOUNTS = [];
@@ -221,11 +222,28 @@ function snapshotDashboard(month) {
     ? process.env[`DASHBOARD_SNAPSHOT_${month.replace("-", "_")}`]
     : undefined;
   const source = monthlySnapshot || process.env.DASHBOARD_SNAPSHOT;
+  if (!source && Object.hasOwn(appointmentHistory, month)) return historicalDashboard(month);
   if (!source) throw new Error("DASHBOARD_SNAPSHOT não configurada na Vercel.");
   let snapshot;
   try { snapshot = JSON.parse(source); } catch { throw new Error("DASHBOARD_SNAPSHOT não é um JSON válido."); }
+  if (snapshot.month !== month && !monthlySnapshot && Object.hasOwn(appointmentHistory, month)) {
+    return historicalDashboard(month);
+  }
   if (snapshot.month !== month) throw new Error(`O snapshot disponível é para ${snapshot.month}.`);
   return { ...snapshot, mode: "snapshot", generatedAt: snapshot.snapshotAt || new Date().toISOString() };
+}
+
+function historicalDashboard(month) {
+  const rows = appointmentHistory[month].map(([family, location, appointments, attendances]) => ({
+    family, location, appointments, attendances, active: null, campaignNames: [],
+    spend: null, leads: null, cpl: null, linkClicks: null, cpc: null, ctr: null,
+    cpm: null, leadRate: null, sales: null, revenue: null, roas: null
+  }));
+  const { appointments, attendances } = totals(rows);
+  return {
+    month, mode: "historical", rows,
+    totals: { appointments, attendances, spend: null, leads: null, sales: null, revenue: null }
+  };
 }
 
 function demoDashboard(month) {
